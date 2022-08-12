@@ -278,7 +278,7 @@ def convert_direct(image, extra=invalid_color):
     return TextImage(texts, image.width)
 
 
-def get_dimensions(width, height, image, char_ratio=36/67):
+def get_dimensions(width, height, image, char_ratio=0.47):
     if width and not height:
         height = round(width * (image.height / image.width) * char_ratio)
     elif height and not width:
@@ -316,7 +316,7 @@ def main():
         help="Target width, if not specified, will be determined by height.")
     parser.add_argument('--height', type=int, default=None,
         help="Target height, if not specified, will be determined by width.")
-    parser.add_argument('--char-ratio', type=float, default=36/67,
+    parser.add_argument('--char-ratio', type=float, default=0.47,
         help="Character ratio, corrects for characters being taller than they"
             + " are wide.")
     parser.add_argument('--quantizer', choices=converters.keys(),
