@@ -175,22 +175,6 @@ class TextImage:
         return '\n'.join(map(str, rows))
 
 
-class TextImageOld:
-    def __init__(self, data, width):
-        self.data = data
-        self.width = width
-
-    def __color_text(self, tc: TextColor):
-        char = '█' if tc.escape_code.foreground else ' '
-        return f'{tc.escape_code}{char}'
-
-    def as_text(self):
-        textual = map(self.__color_text, self.data)
-        rows = split_every(self.width, textual)
-        rows = map(lambda x: ''.join(x), rows)
-        return '\n'.join(map(str, rows))
-
-
 # 0 = clear
 # 1 = bold
 # 4 = underline
