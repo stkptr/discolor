@@ -209,6 +209,8 @@ fg = itertools.starmap(TextColor, fg)
 bg = itertools.starmap(TextColor, bg)
 colors = list(itertools.chain(fg, bg))
 
+invalid_color = TextColor(35, 'magenta', '#D33682')
+
 
 def distance(c1, c2):
     r = (c2.int.r - c1.int.r)**2
@@ -265,22 +267,30 @@ palette = get_palette()
 def convert_pil(image, dither=Image.Dither.FLOYDSTEINBERG):
     image = image.convert('RGB')
     image = image.quantize(palette=palette, dither=dither)
+    # Use invalid color of black since the palette has true black after the
+    # textual colors.
+    return convert_direct(image, black)
+
+
+def convert_direct(image, extra=invalid_color):
     data = image.getdata()
-    # + black since the palette has black
-    texts = map(lambda x: (colors + [black])[x], data)
+    texts = map(lambda x: (colors + [extra])[min(x, len(colors))], data)
     return TextImage(texts, image.width)
 
 
-def get_dimensions(width, height, image):
+def get_dimensions(width, height, image, rectify):
+    char_ratio = 1
     # Discord full block character ratio, width / height
-    char_ratio = 36 / 67
+    if rectify:
+        char_ratio = 36 / 67
 
     if width and not height:
-        height = int(width * (image.height / image.width) * char_ratio)
+        height = round(width * (image.height / image.width) * char_ratio)
     elif height and not width:
-        width = int(height * (image.width / image.height) * 1/char_ratio)
+        width = round(height * (image.width / image.height) * 1/char_ratio)
     elif not height and not width:
-        raise ValueError('Must specify width or height.')
+        width = round(image.width * 1/char_ratio)
+        height = image.height
     
     return (width, height)
 
@@ -288,27 +298,43 @@ def get_dimensions(width, height, image):
 def main():
     import argparse
 
+    converters = {
+        'pil_floyd': convert_pil,
+        'pil': lambda i, s: convert_pil(i, s, Image.NONE),
+        'distance': convert_python,
+        'direct': convert_direct
+    }
+
+    scalers = {
+        'nearest': Image.Resampling.NEAREST,
+        'box': Image.Resampling.BOX,
+        'bilinear': Image.Resampling.BILINEAR,
+        'hamming': Image.Resampling.HAMMING,
+        'bicubic': Image.Resampling.BICUBIC,
+        'lanczos': Image.Resampling.LANCZOS
+    }
+
     parser = argparse.ArgumentParser()
     parser.add_argument('image')
     parser.add_argument('--width', type=int, default=None)
     parser.add_argument('--height', type=int, default=None)
-    parser.add_argument('--quantizer',
-        choices=['distance', 'pil', 'pil_floyd'], default='pil_floyd')
+    parser.add_argument('--no-rectify', action='store_false', dest='rectify')
+    parser.add_argument('--quantizer', choices=converters.keys(),
+        default='pil_floyd')
+    parser.add_argument('--scaler', choices=scalers.keys(),
+        default='bicubic')
     args = parser.parse_args()
 
-    converters = {
-        'pil_floyd': convert_pil,
-        'pil': lambda i, s: convert_pil(i, s, Image.NONE),
-        'distance': convert_python
-    }
-
     convert = converters[args.quantizer]
+    scaler = scalers[args.scaler]
 
     image = Image.open(args.image)
 
-    dimensions = get_dimensions(args.width, args.height, image)
+    dimensions = get_dimensions(args.width, args.height, image, args.rectify)
 
     print(f'Using dimensions {dimensions}', file=sys.stderr)
+
+    image = image.resize(dimensions, resample=scaler)
 
     text = convert_pil(image.resize(dimensions)).as_text()
     print(text)
