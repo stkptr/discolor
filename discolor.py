@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import math
 from PIL import Image
 import itertools
@@ -228,13 +229,12 @@ def best_color(target, candidates):
     return best
 
 
-def convert_python(image, size):
-    image = image.resize(size)
+def convert_python(image):
     data = image.getdata()
     data = map(lambda x: Color(colortuple=x), data)
     quantized = map(lambda x: best_color(x, colors), data)
     text = map(lambda x: x[0], quantized)
-    return TextImage(text, size[0])
+    return TextImage(text, image.width)
 
 
 # This is the closest to black
@@ -262,14 +262,27 @@ def get_palette():
 
 palette = get_palette()
 
-def convert_pil(image, size, dither=Image.Dither.FLOYDSTEINBERG):
-    image = image.resize(size)
+def convert_pil(image, dither=Image.Dither.FLOYDSTEINBERG):
     image = image.convert('RGB')
     image = image.quantize(palette=palette, dither=dither)
     data = image.getdata()
     # + black since the palette has black
     texts = map(lambda x: (colors + [black])[x], data)
-    return TextImage(texts, size[0])
+    return TextImage(texts, image.width)
+
+
+def get_dimensions(width, height, image):
+    # Discord full block character ratio, width / height
+    char_ratio = 36 / 67
+
+    if width and not height:
+        height = int(width * (image.height / image.width) * char_ratio)
+    elif height and not width:
+        width = int(height * (image.width / image.height) * 1/char_ratio)
+    elif not height and not width:
+        raise ValueError('Must specify width or height.')
+    
+    return (width, height)
 
 
 def main():
@@ -293,21 +306,11 @@ def main():
 
     image = Image.open(args.image)
 
-    # Discord full block character ratio, width / height
-    char_ratio = 36 / 67
-
-    if args.width and not args.height:
-        args.height = int(args.width * (image.height / image.width) * char_ratio)
-    elif args.height and not args.width:
-        args.width = int(args.height * (image.width / image.height) * 1/char_ratio)
-    elif not args.height and not args.width:
-        raise ValueError('Must specify width or height.')
-
-    dimensions = (args.width, args.height)
+    dimensions = get_dimensions(args.width, args.height, image)
 
     print(f'Using dimensions {dimensions}', file=sys.stderr)
 
-    text = convert_pil(image, dimensions).as_text()
+    text = convert_pil(image.resize(dimensions)).as_text()
     print(text)
 
     length_adjust = 8 + 4 # for the code block
@@ -319,6 +322,8 @@ def main():
         account_type = 'non-nitro'
     elif len(text) < max_nitro_length:
         account_type = 'nitro'
+
+    print(EscapeCode(0).string, file=sys.stderr)
 
     print(f'Length: {len(text)} (sendable by {account_type} accounts)',
         file=sys.stderr)
