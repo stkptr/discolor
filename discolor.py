@@ -314,15 +314,22 @@ def main():
         'lanczos': Image.Resampling.LANCZOS
     }
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Convert images into Discord-compatible text art.")
     parser.add_argument('image')
-    parser.add_argument('--width', type=int, default=None)
-    parser.add_argument('--height', type=int, default=None)
-    parser.add_argument('--no-rectify', action='store_false', dest='rectify')
+    parser.add_argument('--width', type=int, default=None,
+        help="Target width, if not specified, will be determined by height.")
+    parser.add_argument('--height', type=int, default=None,
+        help="Target height, if not specified, will be determined by width.")
+    parser.add_argument('--no-rectify', action='store_false', dest='rectify',
+        help="Don't rectify the image to have square pixels.")
     parser.add_argument('--quantizer', choices=converters.keys(),
-        default='pil_floyd')
+        default='pil_floyd',
+        help="Algorithm to convert colors to the palette."
+            + " Use direct for images already in the palette.")
     parser.add_argument('--scaler', choices=scalers.keys(),
-        default='bicubic')
+        default='bicubic',
+        help="Downscaling algorithm. Use nearest for pixel art.")
     args = parser.parse_args()
 
     convert = converters[args.quantizer]
