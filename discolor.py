@@ -240,6 +240,7 @@ bg = itertools.starmap(TextColor, bg)
 colors = list(itertools.chain(fg, bg))
 
 invalid_color = TextColor(35, 'magenta', '#D33682')
+reverse_colors = {v.color.tuple: v for v in colors}
 
 
 def distance(c1, c2):
@@ -261,7 +262,7 @@ def best_color(target, candidates):
     return best
 
 
-def convert_python(image):
+def convert_distance(image):
     data = image.getdata()
     data = map(lambda x: Color(colortuple=x), data)
     quantized = map(lambda x: best_color(x, colors), data)
@@ -297,14 +298,16 @@ palette = get_palette()
 def convert_pil(image, dither=Image.Dither.FLOYDSTEINBERG):
     image = image.convert('RGB')
     image = image.quantize(palette=palette, dither=dither)
+    data = image.getdata()
     # Use invalid color of black since the palette has true black after the
     # textual colors.
-    return convert_direct(image, black)
+    texts = map(lambda x: (colors + [black])[x], data)
+    return TextImage(texts, image.width)
 
 
 def convert_direct(image, extra=invalid_color):
     data = image.getdata()
-    texts = map(lambda x: (colors + [extra])[min(x, len(colors))], data)
+    texts = map(lambda x: reverse_colors.get(x, extra), data)
     return TextImage(texts, image.width)
 
 
@@ -325,8 +328,8 @@ def main():
 
     converters = {
         'pil_floyd': convert_pil,
-        'pil': lambda i, s: convert_pil(i, s, Image.NONE),
-        'distance': convert_python,
+        'pil': lambda image: convert_pil(image, Image.Dither.NONE),
+        'distance': convert_distance,
         'direct': convert_direct
     }
 
@@ -368,7 +371,7 @@ def main():
     print(f'Using dimensions {dimensions}', file=sys.stderr)
 
     image = image.resize(dimensions, resample=scaler)
-    text_image = convert_pil(image.resize(dimensions))
+    text_image = convert(image.resize(dimensions))
 
     terminal_output = os.isatty(sys.stdout.fileno())
 
