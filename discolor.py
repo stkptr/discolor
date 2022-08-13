@@ -5,6 +5,7 @@ import itertools
 import functools
 from collections import namedtuple
 import sys
+import enum
 
 
 # Courtesy stackoverflow
@@ -22,19 +23,39 @@ lfold = functools.reduce
 SimpleColor = namedtuple('SimpleColor', 'r g b')
 
 
+class EscapeType(enum.Enum):
+    RESET = 0
+    BOLD = 1
+    UNDERLINE = 2
+    FOREGROUND = 3
+    BACKGROUND = 4
+
+    @staticmethod
+    def typeof(v):
+        if v == 0:
+            return EscapeType.RESET
+        elif v == 1:
+            return EscapeType.BOLD
+        elif v == 4:
+            return EscapeType.UNDERLINE
+        elif v in range(30, 39):
+            return EscapeType.FOREGROUND
+        elif v in range(40, 49):
+            return EscapeType.BACKGROUND
+        
+
 class EscapeCode:
     def __init__(self, *args):
         self.codes = set(args)
+        self.types = set(map(EscapeType.typeof, self.codes))
 
     @property
     def foreground(self):
-        return bool(list(
-            filter(lambda x: x in range(30, 39), self.codes)))
+        return self.types == {EscapeType.FOREGROUND}
 
     @property
     def background(self):
-        return bool(list(
-            filter(lambda x: x in range(40, 49), self.codes)))
+        return self.types == {EscapeType.BACKGROUND}
 
     @property
     def string(self):
@@ -52,21 +73,24 @@ class EscapeCode:
 class EscapedString:
     def __init__(self):
         self.active_codes = set()
+        self.active_types = set()
         self.codestring = []
 
     def __append_code(self, c):
         # saves an introducer
         pre_zero = set()
         # if active codes has codes not in the new code
-        if self.active_codes - c.codes:
+        if self.active_types - c.types:
             pre_zero = {0}
             self.active_codes = set()
+            self.active_types = set()
         # only add differing codes
         new_codes = c.codes - self.active_codes
         new_escape = EscapeCode(*(pre_zero | new_codes))
         if new_codes:
             self.codestring.append(new_escape)
             self.active_codes |= new_codes
+            self.active_types |= c.types
 
     def append(self, v):
         if type(v) == EscapeCode:
