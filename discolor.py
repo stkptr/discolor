@@ -89,7 +89,10 @@ class EscapedString:
         new_escape = EscapeCode(*(pre_zero | new_codes))
         if new_codes:
             self.codestring.append(new_escape)
-            self.active_codes |= new_codes
+            # set to the target codes instead of the new ones, otherwise
+            # active codes could accumulate foregrounds or backgrounds
+            # which would prevent repeats
+            self.active_codes = c.codes
             self.active_types |= c.types
 
     def append(self, v):
