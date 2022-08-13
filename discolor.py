@@ -382,17 +382,20 @@ def main():
     max_length = 2000 - length_adjust
     max_nitro_length = 4000 - length_adjust
 
+    # Final resets for terminal display
+    extra_chars = dimensions[1] * len(EscapeCode(0).string) * terminal_output
+    length = len(text) - extra_chars
+
     account_type = 'no'
-    if len(text) < max_length:
+    if length < max_length:
         account_type = 'non-nitro'
-    elif len(text) < max_nitro_length:
+    elif length < max_nitro_length:
         account_type = 'nitro'
 
-    print(f'Length: {len(text)} (sendable by {account_type} accounts)',
+    print(f'Length: {length} (sendable by {account_type} accounts)',
         file=sys.stderr)
 
-    extra_chars = dimensions[1] * len(EscapeCode(0).string) * terminal_output
-    cpp = (len(text) - extra_chars) / (dimensions[0] * dimensions[1])
+    cpp = length / (dimensions[0] * dimensions[1])
     print(f'{cpp:.2f} characters per pixel (average)', file=sys.stderr)
 
 
