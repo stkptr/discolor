@@ -6,6 +6,7 @@ import functools
 from collections import namedtuple
 import sys
 import enum
+import os
 
 
 # Courtesy stackoverflow
@@ -192,7 +193,7 @@ class TextImage:
         char = '█' if tc.escape_code.foreground else ' '
         return (tc.escape_code, char)
 
-    def as_text(self):
+    def as_text(self, reset_line=False):
         textual = map(self.__color_text, self.data)
         rows = split_every(self.width, textual)
         rows = map(
@@ -200,7 +201,9 @@ class TextImage:
                 lambda v, x: v.extend(x),
                 r, EscapedString()),
             rows)
-        return '\n'.join(map(str, rows))
+        reset = lambda r: str(r.append(EscapeCode(0)))
+        normal = str
+        return '\n'.join(map(reset if reset_line else normal, rows))
 
 
 # 0 = clear
@@ -365,8 +368,11 @@ def main():
     print(f'Using dimensions {dimensions}', file=sys.stderr)
 
     image = image.resize(dimensions, resample=scaler)
+    text_image = convert_pil(image.resize(dimensions))
 
-    text = convert_pil(image.resize(dimensions)).as_text()
+    terminal_output = os.isatty(sys.stdout.fileno())
+
+    text = text_image.as_text(reset_line=terminal_output)
     print(text)
 
     length_adjust = 8 + 4 # for the code block
@@ -379,12 +385,12 @@ def main():
     elif len(text) < max_nitro_length:
         account_type = 'nitro'
 
-    print(EscapeCode(0).string, file=sys.stderr)
-
     print(f'Length: {len(text)} (sendable by {account_type} accounts)',
         file=sys.stderr)
-    print(f'{len(text) / (dimensions[0] * dimensions[1]):.2f} equivalent bytes per pixel',
-        file=sys.stderr)
+
+    extra_chars = dimensions[1] * len(EscapeCode(0).string) * terminal_output
+    cpp = (len(text) - extra_chars) / (dimensions[0] * dimensions[1])
+    print(f'{cpp:.2f} characters per pixel (average)', file=sys.stderr)
 
 
 if __name__ == '__main__':
