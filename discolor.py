@@ -115,13 +115,13 @@ class EscapedString:
 
     def __repr__(self):
         return 'EscapedString(...)'
-        
+
 
 class Color:
     def __init__(self, hexcode=None, colortuple=None):
         if hexcode:
             self.__from_hex(hexcode)
-        elif tuple:
+        elif colortuple:
             self.__from_tuple(colortuple)
         else:
             raise ValueError('No color provided.')
@@ -171,7 +171,7 @@ class Color:
         return (self.int.r, self.int.g, self.int.b)
 
     def __repr__(self):
-        return f'{Color(hexcode={self.hex})}'
+        return f'Color(hexcode={self.hex})'
 
 
 class TextColor:
@@ -323,7 +323,7 @@ def get_dimensions(width, height, image, char_ratio=0.47):
     return (width, height)
 
 
-def main():
+def main(args=None):
     import argparse
 
     converters = {
@@ -359,7 +359,7 @@ def main():
     parser.add_argument('--scaler', choices=scalers.keys(),
         default='bicubic',
         help="Downscaling algorithm. Use nearest for pixel art.")
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
 
     convert = converters[args.quantizer]
     scaler = scalers[args.scaler]
